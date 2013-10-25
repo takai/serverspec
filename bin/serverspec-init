@@ -4,4 +4,58 @@ $LOAD_PATH.unshift File.join(File.dirname(__FILE__), *%w[.. lib])
 
 require 'serverspec'
 
-Serverspec::Setup.run
+require 'bundler/setup'
+
+require 'highline'
+require 'slop'
+
+def usage(opts)
+  opts.
+  exit(1)
+end
+
+opts = Slop.parse do
+  banner 'Usage: serverspec-init [--os=<windows|unix>] [--backend=<ssh|exec|winrm|cmd>] [--vagrant] [--hostname=<hostname>]'
+
+  on 'o', 'os', 'OS type.', argument: :optional
+  on 'b', 'backend', 'Backend type.', argument: :optional
+  on 'v', 'vagrant', 'Enable vagrant and set instance name'
+  on 'h', 'hostname', 'Set hostname', argument: :optional
+end
+terminal = HighLine.new
+
+os = if opts.os?
+       opts[:os]
+     else
+       terminal.choose('Unix', 'Windows') { |menu| menu.header = 'Select OS type' }
+     end.downcase
+
+backend = if opts.backend?
+            opts[:backend]
+          else
+            terminal.choose do |menu|
+              menu.header = 'Select a backend type'
+              menu.choices(*os == 'unix' ? ['SSH', 'exec', 'Vagrant'] : ['WinRM', 'cmd'])
+            end
+          end.downcase
+
+vagrant = if backend == 'ssh'
+            opts.vagrant? ? true : terminal.agree('Use Vagrant?')
+          elsif opts.vagrant?
+            usage(opts)
+          else
+            false
+          end
+
+hostname = if opts.hostname?
+             opts[:hostname]
+           else
+             terminal.ask(vagrant)
+           end
+
+p os
+p backend
+p vagrant
+p hostname
+
+#Serverspec::Setup.run
